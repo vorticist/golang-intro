@@ -73,7 +73,7 @@ type Calculator struct {
 }
 
 func (c *Calculator) Sum() int {
-    return a + b
+    return c.a + c.b
 }
 
 func main() {
