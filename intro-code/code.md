@@ -14,7 +14,7 @@ Acceptance Criteria:
     - Validate that the request data is in correct format
     - Validate the user ids listed in the request
     - If users are valid, we need to create a new reminder entry in the database
-    - We also need to start tracking the time until it time to raise the alarms, use `goroutines` to do this concurrently
+    - We also need to start tracking the time until it's time to raise the alarms, use `goroutines` to do this concurrently
   - Once it is time to trigger an alarm, we should:
     - Retrieve the reminder entry from the database
     - Retrieve the email addresses for the users listed in the reminder entry
