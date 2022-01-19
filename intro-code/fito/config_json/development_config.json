@@ -1,0 +1,7 @@
+{
+  "dbusername" : "postgres",
+  "dbpassword" : "lepassword",
+  "dbhostname" : "127.0.0.1",
+  "dbname"   : "postgres",
+  "serverbase" : "127.0.0.1:8002"
+}

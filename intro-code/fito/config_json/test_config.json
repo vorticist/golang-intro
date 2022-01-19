@@ -1,0 +1,8 @@
+{
+  "dbusername" : "memeuser",
+  "dbpassword" : "memepassword",
+  "dbhostname" : "memehost",
+  "dbschema"   : "memeschema",
+  "redishost"  : "memeredis",
+  "serverbase" : "memeserver"
+}
