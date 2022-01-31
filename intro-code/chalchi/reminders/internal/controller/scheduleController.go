@@ -1,45 +1,61 @@
-package handlers
+package controller
 
 import (
 	"encoding/json"
-	"log"
-	"net/http"
-	"reminders/cmd/api/vo"
-	"reminders/cmd/cron"
-	"reminders/internal/repository"
-
 	uuid "github.com/google/uuid"
-	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4"	
+	"net/http"
+	"reminders/internal/models"
+	"reminders/internal/repository"
+	"reminders/internal/service"
 )
 
 func NewSchedule(c echo.Context) error {
-	schedule := vo.Schedule{}
+	schedule := models.Schedule{}
+	response := models.ResponseSchedule{}
 	err := json.NewDecoder(c.Request().Body).Decode(&schedule)
 	defer c.Request().Body.Close()
 	if err != nil {
-		log.Fatalf("Failed reading the request body %s", err)
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error)
+		response.Success = false
+		response.Message = "Incorrect information received, remember that the correct date format is: YYYY-MM-DDTHH:MM:SSZ, it's important put the indicators T and Z"
+		jsonData, _ := json.Marshal(response)
+		return c.String(http.StatusBadRequest, string(jsonData))
 	}
 	ur := repository.NewUserRepository()
 	res := checkUsers(schedule.Users)
 	//res := ur.ExistUsers(schedule.Users)
 	if res {
-		emails := ur.GetEmails(schedule.Users)
-		cron.WriteToOutput(emails)
-		s := repository.NewScheduleRepository()
-		scheduleId := s.NewSchedule(repository.Schedule{
-			Id:          repository.GenerateUUID(),
-			Description: schedule.Description,
-			Users:       schedule.Users,
-		})
-		log.Printf("The new schedule id is %v", scheduleId)
-		//TODO: validate if it was created correctly
-		//Write the channel
-		return c.String(http.StatusOK, "Schedule created successfully!")
+		emails := ur.GetEmails(schedule.Users)			 
+		if len(emails) > 0 {
+			s := repository.NewScheduleRepository()
+			scheduleId := s.NewSchedule(models.Schedule{
+				Id:          repository.GenerateUUID(),
+				Description: schedule.Description,
+				Users:       schedule.Users,
+			})
+			if len(scheduleId) > 0 {
+				response.Success = true
+				response.Message = "Schedule created successfully!"
+				jsonData, _ := json.Marshal(response)
+				//Call the services for send the reminders
+				service.SendReminder(*schedule.Date, models.Output{Description: schedule.Description, Emails: emails})
+				return c.String(http.StatusOK, string(jsonData))
+			} else {
+				response.Success = false
+				response.Message = "Schedule not created"
+				jsonData, _ := json.Marshal(response)
+				return c.String(http.StatusBadRequest, string(jsonData))
+			}
+		}
+		response.Success = false
+		response.Message = "User's emails not found"
+		jsonData, _ := json.Marshal(response)
+		return c.String(http.StatusBadRequest, string(jsonData))
 	} else {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "One or more users do not exist",
-		})
+		response.Success = false
+		response.Message = "One or more users do not exist"
+		jsonData, _ := json.Marshal(response)
+		return c.JSON(http.StatusBadRequest, string(jsonData))
 	}
 }
 
@@ -86,7 +102,7 @@ func DeleteSchedule(c echo.Context) error {
 func GetSchedules(c echo.Context) error {
 	dataType := c.Param("data")
 	if dataType == "json" {
-		schedule := vo.Schedule{}
+		schedule := models.Schedule{}
 		return c.JSON(http.StatusOK, schedule)
 	} else {
 		return c.JSON(http.StatusBadRequest, map[string]string{
@@ -110,7 +126,7 @@ func checkUsers(users []uuid.UUID) bool {
 }
 
 //TODO: Investigate if exit other better form
-func contains(s []repository.User, str uuid.UUID) bool {
+func contains(s []models.User, str uuid.UUID) bool {
 	var r bool = false
 	for _, v := range s {
 		if v.IdUser == str {

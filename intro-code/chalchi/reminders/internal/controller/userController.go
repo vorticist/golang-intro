@@ -1,16 +1,16 @@
-package handlers
+package controller
 
 import (
 	"encoding/json"
 	"github.com/labstack/echo/v4"
 	"log"
 	"net/http"
-	"reminders/cmd/api/vo"
+	"reminders/internal/models"
 	"reminders/internal/repository"
 )
 
 func NewUser(c echo.Context) error {
-	user := vo.User{}
+	user := models.User{}
 	err := json.NewDecoder(c.Request().Body).Decode(&user)
 	defer c.Request().Body.Close()
 	if err != nil {
@@ -20,7 +20,7 @@ func NewUser(c echo.Context) error {
 	log.Printf("this is your user %v", user)
 	//TODO: call the create new user into data base
 	g := repository.NewUserRepository()
-	userid := g.NewUser(repository.User{
+	userid := g.NewUser(models.User{
 		IdUser: repository.GenerateUUID(),
 		Email:  user.Email,
 	})
@@ -29,7 +29,7 @@ func NewUser(c echo.Context) error {
 }
 
 func UpdateUser(c echo.Context) error {
-	user := vo.User{}
+	user := models.User{}
 	err := json.NewDecoder(c.Request().Body).Decode(&user)
 	if err != nil {
 		log.Fatalf("Failed reading the request body %s", err)

@@ -3,50 +3,38 @@ package repository
 import (
 	"database/sql"
 	"fmt"
-
-	uuid "github.com/google/uuid"
 	"github.com/lib/pq"
+	models "reminders/internal/models"
 )
-
-const (
-	schemaOutput = "outputs"
-	tableOutput  = "output"
-)
-
-type Output struct {
-	Id          uuid.UUID   `json:"id" db:"id" sql:",type:uuid"`
-	Description string      `json:"description" db:"description"`
-	Emails      []uuid.UUID `json:"emails" db:"emails" pg:"array"`
-}
 
 type outputRepository struct {
 	db *sql.DB
 }
 
 type OutputsRepository interface {
-	NewOutput(output Output) string
-	UpdateOutput(output Output) int64
+	NewOutput(output models.Output) string
+	UpdateOutput(output models.Output) int64
 	DeleteOutput(id string) int64
-	ListOutputs() ([]Output, error)
+	ListOutputs() ([]models.Output, error)
 }
 
-func (ur *outputRepository) NewOutput(output Output) string {
+func (ur *outputRepository) NewOutput(output models.Output) string {
 	//TODO: validate the new output not exist into data base.
 
 	// close database
 	defer ur.db.Close()
 
-	insertStmt := `INSERT INTO ` + schemaOutput + `.` + tableOutput + ` (id, description,emails) VALUES ($2, $3, $4) RETURNING id`
+	insertStmt := `INSERT INTO ` + schemaOutput + `.` + tableOutput + ` (id, description, emails) VALUES ($1, $2, $3) RETURNING id`
 	var id string
 
 	// Scan function will save the insert id in the id
-	err := ur.db.QueryRow(insertStmt, tableOutput, output.Id, output.Description, pq.Array(output.Emails)).Scan(&id)
+	err := ur.db.QueryRow(insertStmt, GenerateUUID(), output.Description, pq.Array(output.Emails)).Scan(&id)
 	CheckError(err)
 	fmt.Printf("Inserted %v  in %v\n", id, tableOutput)
 	return id
 }
 
-func (ur *outputRepository) UpdateOutput(output Output) int64 {
+func (ur *outputRepository) UpdateOutput(output models.Output) int64 {
 	// close database
 	defer ur.db.Close()
 
@@ -78,11 +66,11 @@ func (ur *outputRepository) DeleteOutput(id string) int64 {
 	return rowsAffected
 }
 
-func (ur *outputRepository) ListOutputs() ([]Output, error) {
+func (ur *outputRepository) ListOutputs() ([]models.Output, error) {
 	// close database
 	defer ur.db.Close()
 
-	var outputs []Output
+	var outputs []models.Output
 
 	// create the select sql query
 	sqlStatement := `SELECT * FROM ` + tableOutput
@@ -94,7 +82,7 @@ func (ur *outputRepository) ListOutputs() ([]Output, error) {
 
 	// iterate over the rows
 	for rows.Next() {
-		var output Output
+		var output models.Output
 
 		// unmarshal the row object to schedule
 		err = rows.Scan(&output.Id, &output.Description, &output.Emails)

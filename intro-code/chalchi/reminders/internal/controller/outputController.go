@@ -1,17 +1,16 @@
-package handlers
+package controller
 
 import (
 	"encoding/json"
+	"github.com/labstack/echo/v4"
 	"log"
 	"net/http"
-	"reminders/cmd/api/vo"
+	"reminders/internal/models"
 	"reminders/internal/repository"
-
-	"github.com/labstack/echo/v4"
 )
 
 func NewOutput(c echo.Context) error {
-	output := vo.Output{}
+	output := models.Output{}
 	err := json.NewDecoder(c.Request().Body).Decode(&output)
 	defer c.Request().Body.Close()
 	if err != nil {
@@ -22,7 +21,7 @@ func NewOutput(c echo.Context) error {
 	//TODO: Make create the new output into data base.
 	or := repository.NewOutputRepository()
 	outId := or.NewOutput(
-		repository.Output{
+		models.Output{
 			Id:          repository.GenerateUUID(),
 			Description: output.Description,
 			Emails:      output.Emails,
@@ -75,7 +74,7 @@ func GetOutputs(c echo.Context) error {
 	dataType := c.Param("data")
 	if dataType == "json" {
 		//output := []vo.output; // Call the data base for get all users
-		output := vo.Output{}
+		output := models.Output{}
 		return c.JSON(http.StatusOK, output)
 	} else {
 		return c.JSON(http.StatusBadRequest, map[string]string{

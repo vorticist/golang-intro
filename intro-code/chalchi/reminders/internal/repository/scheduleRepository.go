@@ -3,49 +3,38 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	models "reminders/internal/models"
+	"time"
 
-	uuid "github.com/google/uuid"
 	"github.com/lib/pq"
 )
-
-const (
-	schemaSchedule = "schedules"
-	tableSchedule  = "scheduled_items"
-)
-
-type Schedule struct {
-	Id          uuid.UUID   `json:"id" db:"id"`
-	Description string      `json:"description" db:"description"`
-	Users       []uuid.UUID `json:"users" db:"users" pg:"array"`
-}
 
 type scheduleRepository struct {
 	db *sql.DB
 }
 
 type SchedulesRepository interface {
-	NewSchedule(schedule Schedule) string
-	UpdateSchedule(schedule Schedule) int64
+	NewSchedule(schedule models.Schedule) string
+	UpdateSchedule(schedule models.Schedule) int64
 	DeleteSchedule(id string) int64
-	ListSchedules() ([]Schedule, error)
+	ListSchedules() ([]models.Schedule, error)
 }
 
-func (ur *scheduleRepository) NewSchedule(schedule Schedule) string {
+func (ur *scheduleRepository) NewSchedule(schedule models.Schedule) string {
 	//TODO: validate the new schedule not exist into data base.
 	// close database
 	defer ur.db.Close()
 
-	insertStmt := `INSERT INTO ` + schemaSchedule + `.` + tableSchedule + ` (id, description, users) VALUES ($1, $2, $3) RETURNING id`
+	insertStmt := `INSERT INTO ` + schemaSchedule + `.` + tableSchedule + ` (id, description, users, date) VALUES ($1, $2, $3, $4) RETURNING id`
 	var id string
-
 	// Scan function will save the insert id in the id
-	err := ur.db.QueryRow(insertStmt, schedule.Id, schedule.Description, pq.Array(schedule.Users)).Scan(&id)
+	err := ur.db.QueryRow(insertStmt, schedule.Id, schedule.Description, pq.Array(schedule.Users), time.Now()).Scan(&id)
 	CheckError(err)
 	fmt.Printf("Inserted %v in %v\n", id, tableSchedule)
 	return id
 }
 
-func (ur *scheduleRepository) UpdateSchedule(schedule Schedule) int64 {
+func (ur *scheduleRepository) UpdateSchedule(schedule models.Schedule) int64 {
 	// close database
 	defer ur.db.Close()
 
@@ -77,11 +66,11 @@ func (ur *scheduleRepository) DeleteSchedule(id string) int64 {
 	return rowsAffected
 }
 
-func (ur *scheduleRepository) ListSchedules() ([]Schedule, error) {
+func (ur *scheduleRepository) ListSchedules() ([]models.Schedule, error) {
 	// close database
 	defer ur.db.Close()
 
-	var schedules []Schedule
+	var schedules []models.Schedule
 
 	// create the select sql query
 	sqlStatement := `SELECT * FROM ` + schemaSchedule + `.` + tableSchedule
@@ -93,7 +82,7 @@ func (ur *scheduleRepository) ListSchedules() ([]Schedule, error) {
 
 	// iterate over the rows
 	for rows.Next() {
-		var schedule Schedule
+		var schedule models.Schedule
 
 		// unmarshal the row object to schedule
 		err = rows.Scan(&schedule.Id, &schedule.Description, &schedule.Users)

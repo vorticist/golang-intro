@@ -6,33 +6,23 @@ import (
 
 	uuid "github.com/google/uuid"
 	"github.com/lib/pq"
-	_ "github.com/lib/pq"
+	models "reminders/internal/models"
 )
-
-const (
-	schemaUser = "users"
-	tableUser  = "users"
-)
-
-type User struct {
-	IdUser uuid.UUID `json:"user_id" db:"user_id" sql:",type:uuid"`
-	Email  string    `json:"email" db:"email"`
-}
 
 type userRepository struct {
 	db *sql.DB
 }
 
 type UsersRepository interface {
-	NewUser(user User) string
-	UpdateUser(user User) int64
+	NewUser(user models.User) string
+	UpdateUser(user models.User) int64
 	DeleteUser(userId string) int64
-	ListUsers() ([]User, error)
+	ListUsers() ([]models.User, error)
 	ExistUsers(userIds []uuid.UUID) bool
-	GetEmails(userIds []uuid.UUID) []uuid.UUID
+	GetEmails(userIds []uuid.UUID) []string
 }
 
-func (ur *userRepository) NewUser(user User) string {
+func (ur *userRepository) NewUser(user models.User) string {
 	// close database
 	defer ur.db.Close()
 	insertStmt := `INSERT INTO ` + schemaUser + `.` + tableUser + `(user_id, email) VALUES ($1, $2) RETURNING user_id`
@@ -45,7 +35,7 @@ func (ur *userRepository) NewUser(user User) string {
 	return id
 }
 
-func (ur *userRepository) UpdateUser(user User) int64 {
+func (ur *userRepository) UpdateUser(user models.User) int64 {
 	// close database
 	defer ur.db.Close()
 
@@ -80,14 +70,14 @@ func (ur *userRepository) DeleteUser(userId string) int64 {
 	return rowsAffected
 }
 
-func (ur *userRepository) ListUsers() ([]User, error) {
+func (ur *userRepository) ListUsers() ([]models.User, error) {
 	// create the postgres db connection
 	//ur.db = CreateConnection(dbnameUser)
 
 	// close database
 	defer ur.db.Close()
 
-	var users []User
+	var users []models.User
 
 	// create the select sql query
 	sqlStatement := `SELECT * FROM ` + schemaUser + `.` + tableUser
@@ -99,7 +89,7 @@ func (ur *userRepository) ListUsers() ([]User, error) {
 
 	// iterate over the rows
 	for rows.Next() {
-		var user User
+		var user models.User
 
 		// unmarshal the row object to user
 		err = rows.Scan(&user.IdUser, &user.Email)
@@ -116,22 +106,21 @@ func (ur *userRepository) ExistUsers(userIds []uuid.UUID) bool {
 	var result bool = false
 	// close database
 	defer ur.db.Close()
-	queryStmt := `SELECT EXISTS(SELECT 1 FROM ` + schemaUser + `.` + tableUser + ` WHERE user_id::text in ($1) HAVING COUNT (user_id) > $2);`	
+	queryStmt := `SELECT EXISTS(SELECT 1 FROM ` + schemaUser + `.` + tableUser + ` WHERE user_id::text = ANY ($1) HAVING COUNT (user_id) = $2);`	
 	res, err := ur.db.Query(queryStmt, pq.Array(userIds), len(userIds))
 	CheckError(err)
-	res.Scan(&result)
+	res.Scan(&result)	
 	return result
 }
 
-func (ur *userRepository) GetEmails(userIds []uuid.UUID) []uuid.UUID {
+func (ur *userRepository) GetEmails(userIds []uuid.UUID) []string {
 	// close database
 	defer ur.db.Close()
 
-	var emails []uuid.UUID
+	var emails []string
 	// create the select sql query
-	sqlStatement := `SELECT email FROM ` + schemaUser + `.` + tableUser + ` WHERE  user_id::text in ($1)`
-	fmt.Printf("sqlStatement %v \n", sqlStatement)
-	// execute the sql statement	
+	sqlStatement := `SELECT email FROM ` + schemaUser + `.` + tableUser + ` WHERE  user_id::text = ANY ($1)`
+	// execute the sql statement
 	rows, err := ur.db.Query(sqlStatement, pq.Array(userIds))
 	CheckError(err)
 	// close the statement
@@ -139,7 +128,7 @@ func (ur *userRepository) GetEmails(userIds []uuid.UUID) []uuid.UUID {
 
 	// iterate over the rows
 	for rows.Next() {
-		var email uuid.UUID
+		var email string
 
 		// unmarshal the row object to user
 		err = rows.Scan(&email)
